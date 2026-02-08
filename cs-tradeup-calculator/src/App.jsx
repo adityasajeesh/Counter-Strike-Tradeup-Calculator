@@ -121,7 +121,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="text-xs text-slate-500 px-2 py-1 bg-slate-900 rounded border border-slate-700">
-                      {out.collection?.name || out.collection || "Unknown"}
+                      {out.sourceName}
                   </div>
                 </div>
               ))}

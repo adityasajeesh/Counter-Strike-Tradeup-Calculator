@@ -1,4 +1,6 @@
 // src/components/InputSlot.jsx
+import { getSourceName } from '../utils';
+
 export default function InputSlot({ skin, index, onRemove, onUpdateFloat }) {
   return (
     <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col gap-2 relative group hover:border-blue-500 transition-colors">
@@ -10,7 +12,7 @@ export default function InputSlot({ skin, index, onRemove, onUpdateFloat }) {
             {skin.name}
           </span>
           <span className="text-xs text-slate-400 truncate">
-            {skin.collection?.name || skin.collection || "Unknown Collection"}
+            {getSourceName(skin)}
           </span>
         </div>
         <button 
