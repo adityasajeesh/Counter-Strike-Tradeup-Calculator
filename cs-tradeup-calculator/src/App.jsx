@@ -26,10 +26,11 @@ export default function App() {
 
   // Add Skin to Inputs
   const addSkin = (skin) => {
-    // SAFE RARITY CHECK
     const skinRarity = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
     
+    // Check limit dynamically based on CURRENT inputs
     const isCovert = inputs.length > 0 && inputs[0].safeRarity === "Covert";
+    // If empty, default is 10. If Covert, 5. Otherwise 10.
     const currentLimit = isCovert ? 5 : 10;
     
     if (inputs.length >= currentLimit) return;
@@ -43,7 +44,6 @@ export default function App() {
     // Default float
     const defaultFloat = (skin.min_float + skin.max_float) / 2;
     
-    // Save "safeRarity" to the object
     setInputs([...inputs, { ...skin, float: defaultFloat, safeRarity: skinRarity }]);
   };
 
@@ -60,6 +60,10 @@ export default function App() {
 
   const outcomes = getPossibleOutcomes(inputs, allSkins);
 
+  // Determine Max Slots for Render
+  const isCovertMode = inputs.length > 0 && inputs[0].safeRarity === 'Covert';
+  const maxSlots = isCovertMode ? 5 : 10;
+
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
       <div className="max-w-5xl mx-auto">
@@ -69,7 +73,8 @@ export default function App() {
         <SkinSearch allSkins={allSkins} onAdd={addSkin} />
 
         {/* --- INPUT SLOTS GRID --- */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+        {/* Dynamic Grid Column: 5 columns on desktop if Covert mode, else 2 or 5 */}
+        <div className={`grid grid-cols-2 ${isCovertMode ? 'md:grid-cols-5' : 'md:grid-cols-5'} gap-4 mb-12`}>
           
           {/* 1. Render Filled Slots */}
           {inputs.map((skin, idx) => (
@@ -82,46 +87,19 @@ export default function App() {
             />
           ))}
              
-          {/* 2. Render Empty or Locked Slots */}
-          {Array.from({ length: 10 - inputs.length }).map((_, i) => {
-            // Calculate the actual index of this empty slot (0-9)
-            const realIndex = inputs.length + i;
-            
-            // Check if this slot should be locked (Index 5-9 are locked if first skin is Covert)
-            const isCovertMode = inputs.length > 0 && inputs[0].safeRarity === 'Covert';
-            const isLocked = isCovertMode && realIndex >= 5;
-
-            return (
-              <div 
-                key={`empty-${realIndex}`} 
-                className={`
-                  border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-all
-                  ${isLocked 
-                    ? 'border-red-900/30 bg-red-900/10 text-red-900/30 cursor-not-allowed' 
-                    : 'border-slate-700 bg-slate-800/50 text-slate-500'
-                  }
-                `}
-              >
-                {isLocked ? (
-                  <>
-                    <span className="text-2xl mb-2">🔒</span>
-                    <span className="text-xs font-bold uppercase">Slot Locked</span>
-                    <span className="text-[10px]">(Covert limit reached)</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-2xl mb-2 opacity-50">+</span>
-                    <span className="text-sm">Empty Slot</span>
-                  </>
-                )}
-              </div>
-            );
-          })}
+          {/* 2. Render Empty Slots (Strictly up to maxSlots) */}
+          {Array.from({ length: Math.max(0, maxSlots - inputs.length) }).map((_, i) => (
+            <div 
+              key={`empty-${i}`} 
+              className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-lg p-4 flex flex-col items-center justify-center text-slate-500 min-h-[160px]"
+            >
+              <span className="text-2xl mb-2 opacity-50">+</span>
+              <span className="text-sm">Empty Slot {inputs.length + i + 1}</span>
+            </div>
+          ))}
         </div>
 
-        {/* ... Results Section remains the same ... */}
-        {/* Copy the Results Section from your previous App.jsx here if you didn't paste the whole file */}
-        {/* For completeness, here is the Results Section block again: */}
+        {/* --- RESULTS SECTION --- */}
         {inputs.length > 0 && (
           <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
             <div className="bg-slate-800 p-4 border-b border-slate-700">
@@ -149,7 +127,7 @@ export default function App() {
               ))}
               {outcomes.length === 0 && (
                 <div className="p-8 text-center text-slate-500">
-                  No compatible outcomes found. Ensure skins are from the same collection or check rarity.
+                  No compatible outcomes found. (Note: Knives/Gloves generally cannot be traded up further).
                 </div>
               )}
             </div>

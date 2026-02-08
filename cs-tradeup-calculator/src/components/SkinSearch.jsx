@@ -13,7 +13,19 @@ export default function SkinSearch({ allSkins, onAdd }) {
     }
 
     const filtered = allSkins
-      .filter(s => s.name && s.name.toLowerCase().includes(query.toLowerCase()))
+      .filter(s => {
+        // 1. Basic Name Match
+        if (!s.name || !s.name.toLowerCase().includes(query.toLowerCase())) return false;
+
+        // 2. EXCLUDE Knives, Gloves, and Contraband (Cannot be used in Trade Up)
+        const cat = s.category?.name || "";
+        const rarityName = typeof s.rarity === 'object' ? s.rarity.name : s.rarity;
+        
+        if (cat === "Knives" || cat === "Gloves") return false;
+        if (rarityName === "Contraband") return false;
+
+        return true;
+      })
       .slice(0, 10); // Limit to top 10 results
 
     setResults(filtered);
@@ -62,7 +74,7 @@ export default function SkinSearch({ allSkins, onAdd }) {
   );
 }
 
-// Helper styling function (Same as before, just local to this file)
+// Helper styling function
 function getRarityColor(rarity) {
   const r = rarity?.toLowerCase() || "";
   if (r.includes('consumer')) return 'bg-gray-500 text-white';
