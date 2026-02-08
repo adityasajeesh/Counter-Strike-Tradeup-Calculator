@@ -1,5 +1,6 @@
+// src/App.jsx
 import { useState, useEffect } from 'react';
-import { calculateOutcomeFloat, getPossibleOutcomes } from './utils';
+import { getPossibleOutcomes } from './utils';
 import SkinSearch from './components/SkinSearch';
 import InputSlot from './components/InputSlot';
 
@@ -9,6 +10,7 @@ const API_URL = "https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/
 export default function App() {
   const [allSkins, setAllSkins] = useState([]);
   const [inputs, setInputs] = useState([]);
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
 
   // Fetch Data on Load
   useEffect(() => {
@@ -28,9 +30,8 @@ export default function App() {
   const addSkin = (skin) => {
     const skinRarity = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
     
-    // Check limit dynamically based on CURRENT inputs
+    // Check limit dynamically
     const isCovert = inputs.length > 0 && inputs[0].safeRarity === "Covert";
-    // If empty, default is 10. If Covert, 5. Otherwise 10.
     const currentLimit = isCovert ? 5 : 10;
     
     if (inputs.length >= currentLimit) return;
@@ -59,24 +60,59 @@ export default function App() {
   };
 
   const outcomes = getPossibleOutcomes(inputs, allSkins);
-
-  // Determine Max Slots for Render
   const isCovertMode = inputs.length > 0 && inputs[0].safeRarity === 'Covert';
   const maxSlots = isCovertMode ? 5 : 10;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
+    <div className="min-h-screen bg-slate-900 text-white p-8 font-sans relative">
+      
+      {/* --- DISCLAIMER MODAL --- */}
+      {showDisclaimer && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
+            {/* Close X */}
+            <button 
+              onClick={() => setShowDisclaimer(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">DISCLAIMER</h2>
+          
+            <p className="mb-2">
+              This application is solely for calculating potential trade-up floats and outcomes based on the current-known Tradeup Calculation Algorithm.
+            </p>
+            <p className="mb-2">
+              Market prices fluctuate, and trade-ups involve significant risk. Always verify data independently, and from a multitude of sources such as BUFF, CSFloat and Skinport.
+            </p>
+            <p className="font-bold mb-4 text-yellow-500">
+              It is entirely up to the user (you) to verify prices and profitability when trading up items in CS2. The developer bears no responsibility for any financial losses suffered by the user.
+            </p>
+
+            <button 
+              onClick={() => setShowDisclaimer(false)}
+              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-green-900/20"
+            >
+              I Accept
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">CS2 Trade-Up Calculator</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">Counter Strike Trade-Up Calculator</h1>
 
         {/* --- SEARCH COMPONENT --- */}
-        <SkinSearch allSkins={allSkins} onAdd={addSkin} />
+        {/* We pass shouldFocus so the search bar knows when the modal is gone */}
+        <SkinSearch 
+          allSkins={allSkins} 
+          onAdd={addSkin} 
+          shouldFocus={!showDisclaimer} 
+        />
 
         {/* --- INPUT SLOTS GRID --- */}
-        {/* Dynamic Grid Column: 5 columns on desktop if Covert mode, else 2 or 5 */}
         <div className={`grid grid-cols-2 ${isCovertMode ? 'md:grid-cols-5' : 'md:grid-cols-5'} gap-4 mb-12`}>
-          
-          {/* 1. Render Filled Slots */}
           {inputs.map((skin, idx) => (
             <InputSlot 
               key={`${skin.id}-${idx}`} 
@@ -87,7 +123,6 @@ export default function App() {
             />
           ))}
              
-          {/* 2. Render Empty Slots (Strictly up to maxSlots) */}
           {Array.from({ length: Math.max(0, maxSlots - inputs.length) }).map((_, i) => (
             <div 
               key={`empty-${i}`} 
