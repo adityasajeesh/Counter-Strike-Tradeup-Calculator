@@ -19,8 +19,15 @@ export function calculateOutcomeFloat(inputs, outputSkin) {
 
 // --- HELPER FUNCTIONS ---
 
-// Display name for UI
 export function getSourceName(skin) {
+  // PRIORITY 1: CRATES (Cases)
+  // Most trade-ups happen within a case. If it has a case, that's the name we want.
+  if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
+    return skin.crates[0].name;
+  }
+
+  // PRIORITY 2: COLLECTIONS
+  // Only use this if there are no crates (e.g., Map Collections like "Dust II")
   if (skin.collections) {
      if (Array.isArray(skin.collections) && skin.collections.length > 0) return skin.collections[0].name;
      if (skin.collections.name) return skin.collections.name;
@@ -29,15 +36,17 @@ export function getSourceName(skin) {
      if (typeof skin.collection === 'object') return skin.collection.name;
      return skin.collection;
   }
-  if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
-    return skin.crates[0].name;
-  }
+  
   return "Unknown Source";
 }
 
-// Get the SINGLE source ID for an INPUT skin 
-// (An input skin physically comes from one specific source context)
 export function getInputSourceId(skin) {
+  // PRIORITY 1: CRATES (Fixes the Gold/Knife bug)
+  if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
+    return skin.crates[0].id;
+  }
+
+  // PRIORITY 2: COLLECTIONS
   if (skin.collections) {
      if (Array.isArray(skin.collections) && skin.collections.length > 0) return skin.collections[0].id;
      if (skin.collections.id) return skin.collections.id;
@@ -46,16 +55,17 @@ export function getInputSourceId(skin) {
      if (typeof skin.collection === 'object') return skin.collection.id;
      return skin.collection;
   }
-  if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
-    return skin.crates[0].id;
-  }
+
   return "unknown_id";
 }
 
-// Check if an OUTPUT skin belongs to a specific source ID
-// (Output skins like Gloves might belong to 5 different cases)
 export function doesSkinBelongToSource(skin, sourceId) {
-  // Check Collections
+  // 1. Check Crates (Primary Check)
+  if (skin.crates && Array.isArray(skin.crates)) {
+     if (skin.crates.some(c => (c.id || c) === sourceId)) return true;
+  }
+
+  // 2. Check Collections (Secondary Check)
   if (skin.collections) {
      if (Array.isArray(skin.collections)) {
         if (skin.collections.some(c => c.id === sourceId)) return true;
@@ -68,12 +78,6 @@ export function doesSkinBelongToSource(skin, sourceId) {
      if (colId === sourceId) return true;
   }
 
-  // Check Crates (CRITICAL FIX FOR KNIVES/GLOVES)
-  if (skin.crates && Array.isArray(skin.crates)) {
-     // Check if ANY crate in the list matches the input sourceId
-     if (skin.crates.some(c => (c.id || c) === sourceId)) return true;
-  }
-
   return false;
 }
 
@@ -82,20 +86,17 @@ export function doesSkinBelongToSource(skin, sourceId) {
 export function getPossibleOutcomes(inputs, allSkins) {
   if (inputs.length === 0) return [];
 
-  // 1. Determine Input Rarity & Source ID
   const inputRarity = inputs[0].safeRarity || (typeof inputs[0].rarity === 'object' ? inputs[0].rarity.name : inputs[0].rarity);
   
-  // Get all unique source IDs from inputs (usually just 1, but could be mixed)
+  // Get Source IDs using the new "Crate First" priority
   const inputSourceIds = [...new Set(inputs.map(getInputSourceId))];
 
-  // 2. Determine Next Rarity
   const rarityOrder = ["Consumer Grade", "Industrial Grade", "Mil-Spec Grade", "Restricted", "Classified", "Covert"];
   const currentIdx = rarityOrder.indexOf(inputRarity);
   const nextRarity = rarityOrder[currentIdx + 1]; 
 
   let possibleOutcomes = [];
 
-  // 3. Find Matching Outcomes
   if (inputRarity === "Covert") {
      // --- COVERT -> GOLD (Knives/Gloves) ---
      possibleOutcomes = allSkins.filter(skin => {
@@ -104,7 +105,7 @@ export function getPossibleOutcomes(inputs, allSkins) {
         
         if (!isGold) return false;
 
-        // FIX: Check if skin belongs to ANY of the input sources
+        // Does this Gold item come from the same Crate as the input?
         return inputSourceIds.some(sourceId => doesSkinBelongToSource(skin, sourceId));
      });
   } else {
@@ -114,24 +115,17 @@ export function getPossibleOutcomes(inputs, allSkins) {
         
         if (skinRarity !== nextRarity) return false;
 
-        // Check source match
         return inputSourceIds.some(sourceId => doesSkinBelongToSource(skin, sourceId));
      });
   }
 
   // 4. Calculate Probabilities
   return possibleOutcomes.map(outSkin => {
-    // We need to group probabilities by Source.
-    // (e.g. if we mixed Revolution and Clutch inputs, we calculate shares relative to those cases)
-    
     let totalChance = 0;
 
     inputSourceIds.forEach(sourceId => {
-        // Is this outcome valid for this specific source?
         if (doesSkinBelongToSource(outSkin, sourceId)) {
             const inputsFromThisSource = inputs.filter(i => getInputSourceId(i) === sourceId).length;
-            
-            // How many possible outcomes exist in THIS source?
             const outcomesInThisSource = possibleOutcomes.filter(o => doesSkinBelongToSource(o, sourceId)).length;
             
             if (outcomesInThisSource > 0) {
