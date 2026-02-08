@@ -81,6 +81,32 @@ export function doesSkinBelongToSource(skin, sourceId) {
   return false;
 }
 
+// --- VISUAL HELPERS ---
+
+export function getRarityClasses(rarity) {
+  const r = rarity?.toLowerCase() || "";
+
+  // Base style for all cards
+  const base = "bg-gradient-to-br shadow-lg transition-all duration-300";
+
+  if (r.includes('consumer')) return `${base} from-slate-800 to-slate-700/40 border-slate-600/30 hover:border-slate-500`;
+  
+  if (r.includes('industrial')) return `${base} from-slate-800 to-sky-900/30 border-sky-500/30 hover:border-sky-400`;
+  
+  if (r.includes('mil-spec')) return `${base} from-slate-800 to-blue-900/30 border-blue-600/30 hover:border-blue-500`;
+  
+  if (r.includes('restricted')) return `${base} from-slate-800 to-purple-900/30 border-purple-600/30 hover:border-purple-500`;
+  
+  if (r.includes('classified')) return `${base} from-slate-800 to-fuchsia-900/30 border-fuchsia-600/30 hover:border-fuchsia-500`;
+  
+  if (r.includes('covert')) return `${base} from-slate-800 to-red-900/30 border-red-600/30 hover:border-red-500`;
+  
+  if (r.includes('contraband') || r.includes('gold')) return `${base} from-slate-800 to-yellow-900/30 border-yellow-600/30 hover:border-yellow-500`;
+
+  // Default
+  return `${base} from-slate-800 to-slate-800 border-slate-700 hover:border-slate-600`;
+}
+
 // --- MAIN LOGIC ---
 
 export function getPossibleOutcomes(inputs, allSkins) {

@@ -1,11 +1,15 @@
-// src/components/InputSlot.jsx
-import { getSourceName } from '../utils';
+import { getSourceName, getRarityClasses } from '../utils'; // Import new helper
 
 export default function InputSlot({ skin, index, onRemove, onUpdateFloat }) {
+  // Get dynamic styles
+  const rarityName = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
+  const rarityStyles = getRarityClasses(rarityName);
+
   return (
-    <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col gap-2 relative group hover:border-blue-500 transition-colors">
+    // Applied rarityStyles here (replaces "bg-slate-800 ... border-slate-700 ... hover:border-blue-500")
+    <div className={`${rarityStyles} p-4 rounded-lg border flex flex-col gap-2 relative group`}>
       
-      {/* Header: Name & Remove Button */}
+      {/* ... Content remains exactly the same ... */}
       <div className="flex justify-between items-start">
         <div className="flex flex-col overflow-hidden">
           <span className="font-bold truncate text-sm md:text-base" title={skin.name}>
@@ -24,21 +28,18 @@ export default function InputSlot({ skin, index, onRemove, onUpdateFloat }) {
         </button>
       </div>
 
-      {/* Skin Image (If API has it) */}
       {skin.image && (
-        <div className="h-24 w-full flex items-center justify-center my-2 bg-slate-900/50 rounded">
+        <div className="h-24 w-full flex items-center justify-center my-2 bg-slate-900/50 rounded shadow-inner">
           <img src={skin.image} alt={skin.name} className="max-h-full max-w-full object-contain" />
         </div>
       )}
 
-      {/* Float Controls */}
       <div className="mt-auto">
         <div className="flex justify-between text-xs mb-1 text-slate-400">
           <span>Float:</span>
           <span>{skin.min_float} - {skin.max_float}</span>
         </div>
         
-        {/* Number Input for Precise Typing */}
         <input
           type="number"
           step="0.0001"
@@ -49,7 +50,6 @@ export default function InputSlot({ skin, index, onRemove, onUpdateFloat }) {
           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-center mb-2 focus:border-blue-500 outline-none"
         />
 
-        {/* Range Slider */}
         <input 
           type="range" 
           min={skin.min_float} 
