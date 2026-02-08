@@ -17,32 +17,27 @@ export function calculateOutcomeFloat(inputs, outputSkin) {
   return Math.min(Math.max(resultFloat, outputSkin.min_float), outputSkin.max_float);
 }
 
-// --- NEW HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS ---
 
-// robustly get a display name for the source
+// Display name for UI
 export function getSourceName(skin) {
-  // 1. Try Collection (could be array or object)
   if (skin.collections) {
      if (Array.isArray(skin.collections) && skin.collections.length > 0) return skin.collections[0].name;
      if (skin.collections.name) return skin.collections.name;
   }
-  // Note: API sometimes uses "collection" (singular) or "collections" (plural) depending on endpoint version
   if (skin.collection) {
      if (typeof skin.collection === 'object') return skin.collection.name;
      return skin.collection;
   }
-
-  // 2. Try Crates (Cases)
   if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
     return skin.crates[0].name;
   }
-
   return "Unknown Source";
 }
 
-// robustly get a unique ID for grouping
-export function getSourceId(skin) {
-  // 1. Try Collection
+// Get the SINGLE source ID for an INPUT skin 
+// (An input skin physically comes from one specific source context)
+export function getInputSourceId(skin) {
   if (skin.collections) {
      if (Array.isArray(skin.collections) && skin.collections.length > 0) return skin.collections[0].id;
      if (skin.collections.id) return skin.collections.id;
@@ -51,13 +46,35 @@ export function getSourceId(skin) {
      if (typeof skin.collection === 'object') return skin.collection.id;
      return skin.collection;
   }
-
-  // 2. Try Crates
   if (skin.crates && Array.isArray(skin.crates) && skin.crates.length > 0) {
     return skin.crates[0].id;
   }
-
   return "unknown_id";
+}
+
+// Check if an OUTPUT skin belongs to a specific source ID
+// (Output skins like Gloves might belong to 5 different cases)
+export function doesSkinBelongToSource(skin, sourceId) {
+  // Check Collections
+  if (skin.collections) {
+     if (Array.isArray(skin.collections)) {
+        if (skin.collections.some(c => c.id === sourceId)) return true;
+     } else if (skin.collections.id === sourceId) {
+        return true;
+     }
+  }
+  if (skin.collection) {
+     const colId = typeof skin.collection === 'object' ? skin.collection.id : skin.collection;
+     if (colId === sourceId) return true;
+  }
+
+  // Check Crates (CRITICAL FIX FOR KNIVES/GLOVES)
+  if (skin.crates && Array.isArray(skin.crates)) {
+     // Check if ANY crate in the list matches the input sourceId
+     if (skin.crates.some(c => (c.id || c) === sourceId)) return true;
+  }
+
+  return false;
 }
 
 // --- MAIN LOGIC ---
@@ -67,7 +84,9 @@ export function getPossibleOutcomes(inputs, allSkins) {
 
   // 1. Determine Input Rarity & Source ID
   const inputRarity = inputs[0].safeRarity || (typeof inputs[0].rarity === 'object' ? inputs[0].rarity.name : inputs[0].rarity);
-  const inputSourceIds = [...new Set(inputs.map(getSourceId))];
+  
+  // Get all unique source IDs from inputs (usually just 1, but could be mixed)
+  const inputSourceIds = [...new Set(inputs.map(getInputSourceId))];
 
   // 2. Determine Next Rarity
   const rarityOrder = ["Consumer Grade", "Industrial Grade", "Mil-Spec Grade", "Restricted", "Classified", "Covert"];
@@ -80,44 +99,56 @@ export function getPossibleOutcomes(inputs, allSkins) {
   if (inputRarity === "Covert") {
      // --- COVERT -> GOLD (Knives/Gloves) ---
      possibleOutcomes = allSkins.filter(skin => {
-        const skinSourceId = getSourceId(skin);
         const category = skin.category?.name || "";
-        
-        // Gold check (Knives/Gloves share the same source case)
         const isGold = category === "Knives" || category === "Gloves";
-        return inputSourceIds.includes(skinSourceId) && isGold;
+        
+        if (!isGold) return false;
+
+        // FIX: Check if skin belongs to ANY of the input sources
+        return inputSourceIds.some(sourceId => doesSkinBelongToSource(skin, sourceId));
      });
   } else {
      // --- STANDARD TRADE UP ---
      possibleOutcomes = allSkins.filter(skin => {
-        const skinSourceId = getSourceId(skin);
         const skinRarity = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
         
-        return inputSourceIds.includes(skinSourceId) && skinRarity === nextRarity;
+        if (skinRarity !== nextRarity) return false;
+
+        // Check source match
+        return inputSourceIds.some(sourceId => doesSkinBelongToSource(skin, sourceId));
      });
   }
 
   // 4. Calculate Probabilities
   return possibleOutcomes.map(outSkin => {
-    const outSourceId = getSourceId(outSkin);
+    // We need to group probabilities by Source.
+    // (e.g. if we mixed Revolution and Clutch inputs, we calculate shares relative to those cases)
     
-    // Count how many inputs match this outcome's source
-    const inputsFromThisSource = inputs.filter(i => getSourceId(i) === outSourceId).length;
-    
-    // Count how many outcomes exist in this specific source (e.g. 2 pinks in a case)
-    const outcomesInThisSource = possibleOutcomes.filter(o => getSourceId(o) === outSourceId).length;
-    
-    // Probability Formula: (Share of Inputs) / (Possible Outcomes in that Share)
-    const chance = outcomesInThisSource > 0 ? (inputsFromThisSource / inputs.length) / outcomesInThisSource : 0;
+    let totalChance = 0;
+
+    inputSourceIds.forEach(sourceId => {
+        // Is this outcome valid for this specific source?
+        if (doesSkinBelongToSource(outSkin, sourceId)) {
+            const inputsFromThisSource = inputs.filter(i => getInputSourceId(i) === sourceId).length;
+            
+            // How many possible outcomes exist in THIS source?
+            const outcomesInThisSource = possibleOutcomes.filter(o => doesSkinBelongToSource(o, sourceId)).length;
+            
+            if (outcomesInThisSource > 0) {
+                totalChance += (inputsFromThisSource / inputs.length) / outcomesInThisSource;
+            }
+        }
+    });
+
     const calculatedFloat = calculateOutcomeFloat(inputs, outSkin);
 
     return {
       ...outSkin,
-      chance: chance * 100,
+      chance: totalChance * 100,
       resultFloat: calculatedFloat,
-      sourceName: getSourceName(outSkin) // Add this for UI display
+      sourceName: getSourceName(outSkin)
     };
   })
-  .filter(o => o.chance > 0) // Remove 0% chance items
+  .filter(o => o.chance > 0)
   .sort((a, b) => b.chance - a.chance);
 }
