@@ -70,7 +70,7 @@ export default function App() {
       {showDisclaimer && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
           <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
-            {/* Close X */}
+            
             <button 
               onClick={() => setShowDisclaimer(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
@@ -78,17 +78,19 @@ export default function App() {
               ✕
             </button>
 
-            <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">DISCLAIMER</h2>
-          
-            <p className="mb-2">
-              This application is solely for calculating potential trade-up floats and outcomes based on the current-known Tradeup Calculation Algorithm.
-            </p>
-            <p className="mb-2">
-              Market prices fluctuate, and trade-ups involve significant risk. Always verify data independently, and from a multitude of sources such as BUFF, CSFloat and Skinport.
-            </p>
-            <p className="font-bold mb-4 text-yellow-500">
-              It is entirely up to the user (you) to verify prices and profitability when trading up items in CS2. The developer bears no responsibility for any financial losses suffered by the user.
-            </p>
+            <h2 className="text-2xl font-bold text-blue-400 mb-4">Welcome to CS2 Trade-Up Calc</h2>
+            
+            <div className="mb-6 text-slate-300 text-sm leading-relaxed">
+              <p className="mb-2">
+                This application is solely for calculating potential trade-up floats and outcomes based on known algorithms.
+              </p>
+              <p className="font-bold text-yellow-500">
+                Any financial burden, stress, profits, or losses are your own responsibility.
+              </p>
+              <p className="mt-2">
+                Market prices fluctuate, and trade-ups involve significant risk. Always verify data independently.
+              </p>
+            </div>
 
             <button 
               onClick={() => setShowDisclaimer(false)}
@@ -100,11 +102,11 @@ export default function App() {
         </div>
       )}
 
+      {/* --- SECTION 1: CONTROLS (Restricted Width) --- */}
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">Counter Strike Trade-Up Calculator</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">CS2 Trade-Up Calculator</h1>
 
         {/* --- SEARCH COMPONENT --- */}
-        {/* We pass shouldFocus so the search bar knows when the modal is gone */}
         <SkinSearch 
           allSkins={allSkins} 
           onAdd={addSkin} 
@@ -133,30 +135,32 @@ export default function App() {
             </div>
           ))}
         </div>
+      </div>
 
-{/* --- RESULTS SECTION (UPDATED GRID) --- */}
-        {inputs.length > 0 && (
-          <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 mt-8">
+      {/* --- SECTION 2: RESULTS (Wider Width) --- */}
+      {inputs.length > 0 && (
+        <div className="max-w-[95%] 2xl:max-w-[1800px] mx-auto mt-8 transition-all duration-500 ease-in-out">
+          <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
             <div className="bg-slate-800 p-4 border-b border-slate-700">
               <h2 className="text-xl font-bold">Possible Outcomes</h2>
             </div>
             
-            {/* GRID LAYOUT START */}
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {/* Extended Grid Layout: Up to 8 columns on large screens */}
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
               {outcomes.map((out, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col items-center text-center relative hover:border-blue-500 transition-all group"
+                  className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col items-center text-center relative hover:border-blue-500 transition-all group hover:bg-slate-800/80"
                 >
                   {/* Percentage Badge */}
-                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg z-10">
                     {out.chance.toFixed(1)}%
                   </div>
 
                   {/* Image */}
                   <div className="h-24 w-full flex items-center justify-center mb-2 bg-slate-900/50 rounded p-2">
                     {out.image ? (
-                       <img src={out.image} alt={out.name} className="max-h-full max-w-full object-contain" />
+                       <img src={out.image} alt={out.name} className="max-h-full max-w-full object-contain transition-transform group-hover:scale-110" />
                     ) : (
                        <span className="text-slate-600 text-xs">No Image</span>
                     )}
@@ -186,11 +190,10 @@ export default function App() {
                 </div>
               )}
             </div>
-            {/* GRID LAYOUT END */}
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
     </div>
   );
 }
