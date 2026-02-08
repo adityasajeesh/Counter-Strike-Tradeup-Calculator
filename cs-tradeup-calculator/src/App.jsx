@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { calculateOutcomeFloat, getPossibleOutcomes } from './utils';
+import SkinSearch from './components/SkinSearch';
 
 // Constants
 const API_URL = "https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json";
@@ -7,8 +8,6 @@ const API_URL = "https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/
 export default function App() {
   const [allSkins, setAllSkins] = useState([]);
   const [inputs, setInputs] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
 
   // Fetch Data on Load
   useEffect(() => {
@@ -24,24 +23,9 @@ export default function App() {
       .catch(err => console.error("Fetch error:", err));
   }, []);
 
-  // Search Logic
-  useEffect(() => {
-    if (searchQuery.length < 2) { // Changed to 2 for faster feedback
-      setSearchResults([]);
-      return;
-    }
-    
-    // SAFE SEARCH: Checks if name exists before converting to lower case
-    const results = allSkins
-      .filter(s => s.name && s.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      .slice(0, 10);
-      
-    setSearchResults(results);
-  }, [searchQuery, allSkins]);
-
   // Add Skin to Inputs
   const addSkin = (skin) => {
-    // SAFE RARITY CHECK: Handle if rarity is an object or string
+    // SAFE RARITY CHECK
     const skinRarity = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
     
     const isCovert = inputs.length > 0 && inputs[0].safeRarity === "Covert";
@@ -49,7 +33,7 @@ export default function App() {
     
     if (inputs.length >= currentLimit) return;
     
-    // Validate Rarity (Must match existing inputs)
+    // Validate Rarity
     if (inputs.length > 0 && skinRarity !== inputs[0].safeRarity) {
       alert(`Rarity mismatch! You started with ${inputs[0].safeRarity}, you cannot add ${skinRarity}.`);
       return;
@@ -58,10 +42,8 @@ export default function App() {
     // Default float
     const defaultFloat = (skin.min_float + skin.max_float) / 2;
     
-    // We save "safeRarity" to the object so we don't have to check type again
+    // Save "safeRarity" to the object
     setInputs([...inputs, { ...skin, float: defaultFloat, safeRarity: skinRarity }]);
-    setSearchQuery("");
-    setSearchResults([]);
   };
 
   const updateFloat = (index, newFloat) => {
@@ -75,9 +57,6 @@ export default function App() {
     setInputs(newInputs);
   };
 
-  // Run outcomes logic (Pass safeRarity to utils if needed, or modify utils)
-  // For now, let's assume utils needs the raw skin object, but we need to be careful inside utils too.
-  // Actually, we should map inputs to ensure utils gets clean data.
   const outcomes = getPossibleOutcomes(inputs, allSkins);
 
   return (
@@ -85,37 +64,8 @@ export default function App() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">CS2 Trade-Up Calculator</h1>
 
-        {/* SEARCH BAR */}
-        <div className="relative mb-8 z-50">
-          <input 
-            type="text" 
-            className="w-full p-4 bg-slate-800 rounded-lg border border-slate-700 focus:border-blue-500 outline-none"
-            placeholder="Search for a skin (e.g. 'AK-47 | Redline')..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchResults.length > 0 && (
-            <div className="absolute w-full bg-slate-800 mt-1 rounded-lg shadow-xl border border-slate-700 max-h-60 overflow-y-auto">
-              {searchResults.map(skin => {
-                // RENDER SAFETY: Check if rarity is object or string
-                const rarityLabel = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
-                
-                return (
-                  <div 
-                    key={skin.id} 
-                    className="p-3 hover:bg-slate-700 cursor-pointer flex justify-between items-center"
-                    onClick={() => addSkin(skin)}
-                  >
-                    <span>{skin.name}</span>
-                    <span className={`text-xs px-2 py-1 rounded ${getRarityColor(rarityLabel)}`}>
-                      {rarityLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* --- SEARCH COMPONENT (Replaces the old Search Bar) --- */}
+        <SkinSearch allSkins={allSkins} onAdd={addSkin} />
 
         {/* INPUT SLOTS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
@@ -127,7 +77,6 @@ export default function App() {
               </div>
               
               <div className="text-xs text-slate-400">
-                {/* SAFETY: Collection might be object or string */}
                 Collection: {skin.collection?.name || skin.collection || "Unknown"}
               </div>
 
@@ -150,7 +99,6 @@ export default function App() {
           ))}
              
           {/* Empty Slots */}
-          {/* Fix: Check inputs[0] existence safely */}
           {Array.from({ length: (inputs.length > 0 && inputs[0].safeRarity === 'Covert' ? 5 : 10) - inputs.length }).map((_, i) => (
             <div key={`empty-${i}`} className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-lg p-4 flex items-center justify-center text-slate-500">
               Empty Slot
@@ -158,7 +106,7 @@ export default function App() {
           ))}
         </div>
 
-        {/* RESULTS */}
+        {/* RESULTS SECTION */}
         {inputs.length > 0 && (
           <div className="bg-slate-900 rounded-xl overflow-hidden">
             <h2 className="text-xl font-bold mb-4">Possible Outcomes</h2>
@@ -179,19 +127,8 @@ export default function App() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
-}
-
-function getRarityColor(rarity) {
-  // Normalize string just in case
-  const r = rarity?.toLowerCase() || "";
-  if (r.includes('consumer')) return 'bg-gray-500 text-white';
-  if (r.includes('industrial')) return 'bg-blue-300 text-black';
-  if (r.includes('mil-spec')) return 'bg-blue-600 text-white';
-  if (r.includes('restricted')) return 'bg-purple-600 text-white';
-  if (r.includes('classified')) return 'bg-pink-500 text-white';
-  if (r.includes('covert')) return 'bg-red-600 text-white';
-  return 'bg-gray-600';
 }
