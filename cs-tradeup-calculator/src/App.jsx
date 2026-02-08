@@ -134,38 +134,59 @@ export default function App() {
           ))}
         </div>
 
-        {/* --- RESULTS SECTION --- */}
+{/* --- RESULTS SECTION (UPDATED GRID) --- */}
         {inputs.length > 0 && (
-          <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
+          <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 mt-8">
             <div className="bg-slate-800 p-4 border-b border-slate-700">
               <h2 className="text-xl font-bold">Possible Outcomes</h2>
             </div>
-            <div className="divide-y divide-slate-800">
+            
+            {/* GRID LAYOUT START */}
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {outcomes.map((out, idx) => (
-                <div key={idx} className="flex items-center p-4 bg-slate-800/50 hover:bg-slate-800 transition-colors">
-                  <div className="w-20 font-bold text-xl text-blue-400 text-center mr-4">{out.chance.toFixed(1)}%</div>
-                  
-                  {out.image && (
-                     <img src={out.image} alt={out.name} className="h-12 w-20 object-contain mr-4" />
-                  )}
+                <div 
+                  key={idx} 
+                  className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col items-center text-center relative hover:border-blue-500 transition-all group"
+                >
+                  {/* Percentage Badge */}
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
+                    {out.chance.toFixed(1)}%
+                  </div>
 
-                  <div className="flex-1">
-                    <div className="font-bold text-lg">{out.name}</div>
-                    <div className="text-sm text-slate-400">
+                  {/* Image */}
+                  <div className="h-24 w-full flex items-center justify-center mb-2 bg-slate-900/50 rounded p-2">
+                    {out.image ? (
+                       <img src={out.image} alt={out.name} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                       <span className="text-slate-600 text-xs">No Image</span>
+                    )}
+                  </div>
+
+                  {/* Text Info */}
+                  <div className="w-full">
+                    <div className="font-bold text-sm truncate mb-1" title={out.name}>
+                      {out.name}
+                    </div>
+                    
+                    <div className="text-xs text-slate-400 mb-2">
                       Float: <span className="text-white font-mono">{out.resultFloat.toFixed(9)}</span>
                     </div>
-                  </div>
-                  <div className="text-xs text-slate-500 px-2 py-1 bg-slate-900 rounded border border-slate-700">
+
+                    <div className="text-[10px] text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-700/50 truncate">
                       {out.sourceName}
+                    </div>
                   </div>
                 </div>
               ))}
+
+              {/* Empty State */}
               {outcomes.length === 0 && (
-                <div className="p-8 text-center text-slate-500">
+                <div className="col-span-full p-8 text-center text-slate-500">
                   No compatible outcomes found. (Note: Knives/Gloves generally cannot be traded up further).
                 </div>
               )}
             </div>
+            {/* GRID LAYOUT END */}
           </div>
         )}
 
