@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { calculateOutcomeFloat, getPossibleOutcomes } from './utils';
 import SkinSearch from './components/SkinSearch';
+import InputSlot from './components/InputSlot';
 
 // Constants
 const API_URL = "https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json";
@@ -61,69 +62,96 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">CS2 Trade-Up Calculator</h1>
 
-        {/* --- SEARCH COMPONENT (Replaces the old Search Bar) --- */}
+        {/* --- SEARCH COMPONENT --- */}
         <SkinSearch allSkins={allSkins} onAdd={addSkin} />
 
-        {/* INPUT SLOTS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+        {/* --- INPUT SLOTS GRID --- */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+          
+          {/* 1. Render Filled Slots */}
           {inputs.map((skin, idx) => (
-            <div key={idx} className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col gap-2">
-              <div className="flex justify-between items-start">
-                <span className="font-bold truncate">{skin.name}</span>
-                <button onClick={() => removeSkin(idx)} className="text-red-400 hover:text-red-300">✕</button>
-              </div>
-              
-              <div className="text-xs text-slate-400">
-                Collection: {skin.collection?.name || skin.collection || "Unknown"}
-              </div>
-
-              <div className="mt-2">
-                <div className="flex justify-between text-xs mb-1">
-                  <span>Float: {skin.float.toFixed(4)}</span>
-                  <span className="text-slate-500">{skin.min_float} - {skin.max_float}</span>
-                </div>
-                <input 
-                  type="range" 
-                  min={skin.min_float} 
-                  max={skin.max_float} 
-                  step="0.0001"
-                  value={skin.float}
-                  onChange={(e) => updateFloat(idx, e.target.value)}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-            </div>
+            <InputSlot 
+              key={`${skin.id}-${idx}`} 
+              index={idx} 
+              skin={skin} 
+              onRemove={removeSkin} 
+              onUpdateFloat={updateFloat} 
+            />
           ))}
              
-          {/* Empty Slots */}
-          {Array.from({ length: (inputs.length > 0 && inputs[0].safeRarity === 'Covert' ? 5 : 10) - inputs.length }).map((_, i) => (
-            <div key={`empty-${i}`} className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-lg p-4 flex items-center justify-center text-slate-500">
-              Empty Slot
-            </div>
-          ))}
+          {/* 2. Render Empty or Locked Slots */}
+          {Array.from({ length: 10 - inputs.length }).map((_, i) => {
+            // Calculate the actual index of this empty slot (0-9)
+            const realIndex = inputs.length + i;
+            
+            // Check if this slot should be locked (Index 5-9 are locked if first skin is Covert)
+            const isCovertMode = inputs.length > 0 && inputs[0].safeRarity === 'Covert';
+            const isLocked = isCovertMode && realIndex >= 5;
+
+            return (
+              <div 
+                key={`empty-${realIndex}`} 
+                className={`
+                  border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-all
+                  ${isLocked 
+                    ? 'border-red-900/30 bg-red-900/10 text-red-900/30 cursor-not-allowed' 
+                    : 'border-slate-700 bg-slate-800/50 text-slate-500'
+                  }
+                `}
+              >
+                {isLocked ? (
+                  <>
+                    <span className="text-2xl mb-2">🔒</span>
+                    <span className="text-xs font-bold uppercase">Slot Locked</span>
+                    <span className="text-[10px]">(Covert limit reached)</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl mb-2 opacity-50">+</span>
+                    <span className="text-sm">Empty Slot</span>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* RESULTS SECTION */}
+        {/* ... Results Section remains the same ... */}
+        {/* Copy the Results Section from your previous App.jsx here if you didn't paste the whole file */}
+        {/* For completeness, here is the Results Section block again: */}
         {inputs.length > 0 && (
-          <div className="bg-slate-900 rounded-xl overflow-hidden">
-            <h2 className="text-xl font-bold mb-4">Possible Outcomes</h2>
-            <div className="grid grid-cols-1 gap-2">
+          <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
+            <div className="bg-slate-800 p-4 border-b border-slate-700">
+              <h2 className="text-xl font-bold">Possible Outcomes</h2>
+            </div>
+            <div className="divide-y divide-slate-800">
               {outcomes.map((out, idx) => (
-                <div key={idx} className="flex items-center p-3 bg-slate-800 rounded border-l-4 border-blue-500">
-                  <div className="w-16 font-bold text-lg text-center">{out.chance.toFixed(1)}%</div>
-                  <div className="flex-1 px-4">
-                    <div className="font-bold">{out.name}</div>
-                    <div className="text-sm text-slate-400">Float: <span className="text-white">{out.resultFloat.toFixed(9)}</span></div>
+                <div key={idx} className="flex items-center p-4 bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                  <div className="w-20 font-bold text-xl text-blue-400 text-center mr-4">{out.chance.toFixed(1)}%</div>
+                  
+                  {out.image && (
+                     <img src={out.image} alt={out.name} className="h-12 w-20 object-contain mr-4" />
+                  )}
+
+                  <div className="flex-1">
+                    <div className="font-bold text-lg">{out.name}</div>
+                    <div className="text-sm text-slate-400">
+                      Float: <span className="text-white font-mono">{out.resultFloat.toFixed(9)}</span>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-500 px-2 py-1 bg-slate-900 rounded border border-slate-700">
                       {out.collection?.name || out.collection || "Unknown"}
                   </div>
                 </div>
               ))}
-              {outcomes.length === 0 && <p className="text-slate-500">No compatible outcomes found. (Check Rarity/Collection)</p>}
+              {outcomes.length === 0 && (
+                <div className="p-8 text-center text-slate-500">
+                  No compatible outcomes found. Ensure skins are from the same collection or check rarity.
+                </div>
+              )}
             </div>
           </div>
         )}
