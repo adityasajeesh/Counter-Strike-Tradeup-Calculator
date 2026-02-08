@@ -1,70 +1,74 @@
-// src/utils.js
-
-// 1. Calculate the Normalized Float (The Math from your image)
 export function calculateOutcomeFloat(inputs, outputSkin) {
   let sumNormalized = 0;
-  
   inputs.forEach(skin => {
     const range = skin.max_float - skin.min_float;
-    // If range is 0 (rare), assume 0 wear
     const normalized = range === 0 ? 0 : (skin.float - skin.min_float) / range;
     sumNormalized += normalized;
   });
-
   const avgNormalized = sumNormalized / inputs.length;
-
-  // Apply average wear to the output skin's caps
   const outputRange = outputSkin.max_float - outputSkin.min_float;
   const resultFloat = (avgNormalized * outputRange) + outputSkin.min_float;
-
-  // Ensure result never exceeds the skin's hard caps
   return Math.min(Math.max(resultFloat, outputSkin.min_float), outputSkin.max_float);
 }
 
-// 2. Logic to find what skins you can get
 export function getPossibleOutcomes(inputs, allSkins) {
   if (inputs.length === 0) return [];
 
-  // Get unique collections from inputs
-  const inputCollections = [...new Set(inputs.map(s => s.collection))];
-  const inputRarity = inputs[0].rarity;
-  
-  // Determine the next tier rarity
+  // 1. SAFE EXTRACTION: Get clean strings for comparison
+  // The input skin in App.jsx now has a property 'safeRarity' we created.
+  const inputRarity = inputs[0].safeRarity || (typeof inputs[0].rarity === 'object' ? inputs[0].rarity.name : inputs[0].rarity);
+
+  // Get list of collection IDs or Names from inputs
+  const inputCollections = [...new Set(inputs.map(s => 
+    typeof s.collection === 'object' ? s.collection.id : s.collection
+  ))];
+
   const rarityOrder = ["Consumer Grade", "Industrial Grade", "Mil-Spec Grade", "Restricted", "Classified", "Covert"];
   const currentIdx = rarityOrder.indexOf(inputRarity);
-  const nextRarity = rarityOrder[currentIdx + 1]; // Undefined if input is Covert (Knife/Glove logic handled later)
+  const nextRarity = rarityOrder[currentIdx + 1];
 
   let possibleOutcomes = [];
 
-  // SPECIAL CASE: 5 Covert Skins -> Gold (Knives/Gloves)
   if (inputRarity === "Covert") {
-     // For Covert tradeups, the output is a "Special Rare" (Gold) from the same case
-     // Note: In API data, knives/gloves usually don't have a standard "rarity" field like guns.
-     // We filter for matching collection + weapon types that are knives/gloves.
-     possibleOutcomes = allSkins.filter(skin => 
-        inputCollections.includes(skin.collection) && 
-        (skin.category === "Knives" || skin.category === "Gloves" || skin.rarity === "Contraband") // Simplification for API data
-     );
+     // Knife/Glove Logic
+     possibleOutcomes = allSkins.filter(skin => {
+        const colId = typeof skin.collection === 'object' ? skin.collection.id : skin.collection;
+        // Simple check: Is it in the same collection?
+        // Note: For actual knives, rarity might be "Contraband" or null in some APIs, 
+        // but usually they share the collection ID.
+        return inputCollections.includes(colId) && (skin.category?.name === "Knives" || skin.category?.name === "Gloves");
+     });
   } else {
-     // Standard Logic: Next rarity tier in the same collection
-     possibleOutcomes = allSkins.filter(skin => 
-        inputCollections.includes(skin.collection) && 
-        skin.rarity === nextRarity
-     );
+     // Standard Logic
+     possibleOutcomes = allSkins.filter(skin => {
+        const skinRarity = typeof skin.rarity === 'object' ? skin.rarity.name : skin.rarity;
+        const colId = typeof skin.collection === 'object' ? skin.collection.id : skin.collection;
+        
+        return inputCollections.includes(colId) && skinRarity === nextRarity;
+     });
   }
 
   // Calculate probabilities
-  // Rule: (Inputs from Collection A / Total Inputs) / (Number of outcomes in Collection A)
   return possibleOutcomes.map(outSkin => {
-    const inputsFromThisCol = inputs.filter(i => i.collection === outSkin.collection).length;
-    const outcomesInThisCol = possibleOutcomes.filter(o => o.collection === outSkin.collection).length;
+    const outColId = typeof outSkin.collection === 'object' ? outSkin.collection.id : outSkin.collection;
+    
+    // How many inputs are from this specific collection?
+    const inputsFromThisCol = inputs.filter(i => {
+        const iColId = typeof i.collection === 'object' ? i.collection.id : i.collection;
+        return iColId === outColId;
+    }).length;
+
+    const outcomesInThisCol = possibleOutcomes.filter(o => {
+        const oColId = typeof o.collection === 'object' ? o.collection.id : o.collection;
+        return oColId === outColId;
+    }).length;
     
     const chance = (inputsFromThisCol / inputs.length) / outcomesInThisCol;
     const calculatedFloat = calculateOutcomeFloat(inputs, outSkin);
 
     return {
       ...outSkin,
-      chance: chance * 100, // Convert to percentage
+      chance: chance * 100,
       resultFloat: calculatedFloat
     };
   });
